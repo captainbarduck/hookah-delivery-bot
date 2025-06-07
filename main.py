@@ -1,7 +1,14 @@
 import os
+import logging
 from flask import Flask, request
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 TOKEN = os.environ.get("BOT_TOKEN")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET")
