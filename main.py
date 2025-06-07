@@ -89,7 +89,7 @@ if __name__ == "__main__":
     application.run_webhook(
         listen="0.0.0.0",
         port=int(os.environ.get("PORT", 8080)),
-	path=WEBHOOK_SECRET,
+	webhook_path=f"/{WEBHOOK_SECRET}",
 	webhook_url=f"{WEBHOOK_URL}/{WEBHOOK_SECRET}",
         secret_token=WEBHOOK_SECRET,
     )
