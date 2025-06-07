@@ -5,7 +5,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandl
 
 TOKEN = os.environ.get("BOT_TOKEN")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET")
-APP_URL = os.environ.get("WEBHOOK_URL")  # например, https://your-bot.up.railway.app
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL")  # например, https://your-bot.up.railway.app
 
 app = Flask(__name__)
 
