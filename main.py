@@ -1,5 +1,6 @@
 import os
 import logging
+import requests
 from flask import Flask, request
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
@@ -10,19 +11,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TOKEN = os.environ.get("BOT_TOKEN")
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET")
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL")  # например, https://your-bot.up.railway.app
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL")  # https://web-production-....railway.app
 
 app = Flask(__name__)
+application = Application.builder().token(BOT_TOKEN).build()
 
-# In-memory storage (замени на БД в будущем)
 user_orders = {}
 
-# Telegram App init
-application = Application.builder().token(TOKEN).build()
-
-# === Команды ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[KeyboardButton("🛒 Заказать кальян")]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -33,48 +30,43 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
-
-    if text == "🛒 Заказать кальян":
-        await update.message.reply_text("Выберите кальян из списка:\n1. DarkSide Strong 🍇 – 40 BYN\n2. MustHave Citrus 🍋 – 35 BYN\n\nНапиши номер или название.")
-        user_orders[update.effective_user.id] = {"step": "choosing_hookah"}
-        return
-
     user_id = update.effective_user.id
     state = user_orders.get(user_id, {}).get("step")
 
-    if state == "choosing_hookah":
+    if text == "🛒 Заказать кальян":
+        await update.message.reply_text("Выберите кальян:\n1. DarkSide 🍇 – 40 BYN\n2. MustHave 🍋 – 35 BYN")
+        user_orders[user_id] = {"step": "choosing_hookah"}
+    elif state == "choosing_hookah":
         user_orders[user_id]["hookah"] = text
         user_orders[user_id]["step"] = "address"
-        await update.message.reply_text("Укажи адрес доставки (только по Минску):")
+        await update.message.reply_text("Укажи адрес (только Минск):")
     elif state == "address":
         if "минск" not in text.lower():
-            await update.message.reply_text("Мы доставляем только по Минску. Пожалуйста, укажи минский адрес.")
+            await update.message.reply_text("Доставка только по Минску. Введи минский адрес.")
             return
         user_orders[user_id]["address"] = text
         user_orders[user_id]["step"] = "time"
-        await update.message.reply_text("Укажи удобное время доставки (например, 20:00):")
+        await update.message.reply_text("Укажи удобное время:")
     elif state == "time":
         user_orders[user_id]["time"] = text
         user_orders[user_id]["step"] = "phone"
-        await update.message.reply_text("Оставь, пожалуйста, свой номер телефона 📞:")
+        await update.message.reply_text("Оставь номер телефона 📞:")
     elif state == "phone":
         user_orders[user_id]["phone"] = text
         order = user_orders[user_id]
         summary = (
-            f"✅ Твой заказ:\n"
+            f"✅ Заказ:\n"
             f"• Кальян: {order['hookah']}\n"
             f"• Адрес: {order['address']}\n"
             f"• Время: {order['time']}\n"
-            f"• Телефон: {order['phone']}\n\n"
-            "Спасибо! Мы свяжемся с тобой в ближайшее время 🙌"
+            f"• Телефон: {order['phone']}"
         )
         await update.message.reply_text(summary)
-        # Тут можно отправить заказ владельцу бота, например, через context.bot.send_message(chat_id=OWNER_ID, ...)
         user_orders[user_id]["step"] = "done"
     else:
-        await update.message.reply_text("Нажми 🛒 Заказать кальян, чтобы начать новый заказ.")
+        await update.message.reply_text("Нажми 🛒 Заказать кальян, чтобы начать.")
 
-# === Обработчики ===
+# === Handlers ===
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
@@ -89,13 +81,16 @@ def webhook():
 def index():
     return "Bot is running."
 
-# === Запуск ===
+# === Установка Webhook при запуске ===
 if __name__ == "__main__":
-    # Установка webhook
-    webhook_url = f"{WEBHOOK_URL}/{WEBHOOK_SECRET}"
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=int(os.environ.get("PORT", 8080)),
-	webhook_url=f"{WEBHOOK_URL}/{WEBHOOK_SECRET}",
-        secret_token=WEBHOOK_SECRET,
-    )
+    # Установим webhook вручную
+    url = f"{WEBHOOK_URL}/{WEBHOOK_SECRET}"
+    set_webhook_url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook"
+    r = requests.post(set_webhook_url, json={
+        "url": url,
+        "secret_token": WEBHOOK_SECRET
+    })
+    print("Webhook setup response:", r.text)
+
+    # Запуск Flask-сервера
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
