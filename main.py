@@ -85,9 +85,11 @@ def index():
 # === Запуск ===
 if __name__ == "__main__":
     # Установка webhook
-    webhook_url = f"{APP_URL}/{WEBHOOK_SECRET}"
+    webhook_url = f"{WEBHOOK_URL}/{WEBHOOK_SECRET}"
     application.run_webhook(
         listen="0.0.0.0",
         port=int(os.environ.get("PORT", 8080)),
-        webhook_url=webhook_url
+	path=WEBHOOK_SECRET,
+	webhook_url=f"{WEBHOOK_URL}/{WEBHOOK_SECRET}",
+        secret_token=WEBHOOK_SECRET,
     )
