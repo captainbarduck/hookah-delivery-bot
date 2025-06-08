@@ -87,7 +87,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Регистрация хендлеров
 telegram_app.add_handler(CommandHandler("start", start))
-tegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 # === Webhook эндпоинт ===
 @app.route(f"/{WEBHOOK_SECRET}", methods=["POST"])
