@@ -1,3 +1,4 @@
+import asyncio
 import os
 import logging
 from flask import Flask, request, abort
@@ -112,9 +113,6 @@ if __name__ == "__main__":
             secret_token=WEBHOOK_SECRET
         )
 
-    telegram_app.run_polling(
-        close_loop=False,
-        handle_signals=False,
-    )
+    asyncio.run(setup())
 
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
