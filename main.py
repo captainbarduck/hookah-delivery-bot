@@ -1,8 +1,10 @@
 import asyncio
 import os
 import logging
-from flask import Flask, request, abort
+from quart import Quart, request, abort
 from dotenv import load_dotenv
+from hypercorn.config import Config
+from hypercorn.asyncio import serve
 
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
@@ -13,6 +15,10 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
+# Remove trailing slash from WEBHOOK_URL if present
+if WEBHOOK_URL and WEBHOOK_URL.endswith('/'):
+    WEBHOOK_URL = WEBHOOK_URL.rstrip('/')
+
 # Проверка
 if not all([BOT_TOKEN, WEBHOOK_SECRET, WEBHOOK_URL]):
     raise RuntimeError("Переменные окружения не заданы корректно!")
@@ -21,11 +27,15 @@ if not all([BOT_TOKEN, WEBHOOK_SECRET, WEBHOOK_URL]):
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Flask-приложение
-app = Flask(__name__)
+# Quart-приложение для асинхронной поддержки
+app = Quart(__name__)
 
 # Telegram-приложение
-telegram_app = Application.builder().token(BOT_TOKEN).build()
+telegram_app = (
+    Application.builder()
+    .token(BOT_TOKEN)
+    .build()
+)
 
 # Хранилище заказов в памяти
 user_orders = {}
@@ -91,28 +101,127 @@ telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 # === Webhook эндпоинт ===
+@app.route(f"/{WEBHOOK_SECRET}/", methods=["POST"])
 @app.route(f"/{WEBHOOK_SECRET}", methods=["POST"])
-def webhook():
-    if request.headers.get("X-Telegram-Bot-Api-Secret-Token") != WEBHOOK_SECRET:
+async def webhook():
+    logger.info(f"Received webhook request from {request.remote_addr}")
+    
+    # Verify secret token
+    secret_token = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
+    if secret_token != WEBHOOK_SECRET:
+        logger.warning(f"Unauthorized webhook attempt from {request.remote_addr}")
         abort(403)
-    update = Update.de_json(request.get_json(force=True), telegram_app.bot)
-    telegram_app.update_queue.put_nowait(update)
-    return "ok"
+    
+    try:
+        # Get and parse update
+        update_json = await request.get_json(force=True)
+        message_text = update_json.get('message', {}).get('text', 'unknown')
+        logger.info(f"Received update with text: {message_text}")
+        
+        # Process update
+        update = Update.de_json(update_json, telegram_app.bot)
+        logger.info(f"Processing update ID: {update.update_id}")
+        
+        await telegram_app.process_update(update)
+        logger.info(f"Successfully processed update ID: {update.update_id}")
+        return "ok"
+        
+    except Exception as e:
+        logger.error(f"Error processing update: {str(e)}", exc_info=True)
+        return "Error processing update", 500
 
 # Проверочный GET-запрос
 @app.route("/", methods=["GET"])
-def index():
+async def index():
     return "Telegram hookah bot is running."
+
+@app.route("/health")
+async def health():
+    try:
+        # Check if bot can get its info
+        bot_info = await telegram_app.bot.get_me()
+        return {
+            "status": "healthy",
+            "bot_username": bot_info.username,
+            "webhook_mode": True
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {"status": "unhealthy", "error": str(e)}, 500
+
+# === Lifecycle hooks ===
+@app.before_serving
+async def startup():
+    logger.info("Application startup...")
+
+@app.after_serving
+async def shutdown():
+    logger.info("Application shutdown...")
+    await telegram_app.stop()
+    await telegram_app.shutdown()
 
 # === Запуск ===
 if __name__ == "__main__":
-    # Установка webhook
-    async def setup_webhook():
-        await telegram_app.bot.set_webhook(
-            url=f"{WEBHOOK_URL}/{WEBHOOK_SECRET}",
-            secret_token=WEBHOOK_SECRET
-        )
+    async def init_app():
+        try:
+            # Initialize and start the application
+            await telegram_app.initialize()
+            await telegram_app.start()
+            
+            # Set up webhook
+            webhook_path = f"{WEBHOOK_URL.rstrip('/')}/{WEBHOOK_SECRET}"
+            logger.info(f"Setting webhook to: {webhook_path}")
+            
+            # Get current webhook info
+            webhook_info = await telegram_app.bot.get_webhook_info()
+            if webhook_info.url:
+                logger.info(f"Found existing webhook: {webhook_info.url}")
+                await telegram_app.bot.delete_webhook(drop_pending_updates=True)
+                logger.info("Deleted existing webhook and dropped pending updates")
+            
+            # Set new webhook with validation
+            try:
+                result = await telegram_app.bot.set_webhook(
+                    url=webhook_path,
+                    secret_token=WEBHOOK_SECRET,
+                    allowed_updates=['message', 'callback_query']
+                )
+                logger.info(f"Webhook setup result: {result}")
+                
+                # Verify webhook setup
+                webhook_info = await telegram_app.bot.get_webhook_info()
+                logger.info(f"Webhook info: {webhook_info.to_dict()}")
+                
+                if not webhook_info.url:
+                    raise RuntimeError("Webhook setup failed - no webhook URL set")
+            except Exception as e:
+                logger.error(f"Failed to set webhook: {e}")
+                raise
+        except Exception as e:
+            logger.error(f"Failed to initialize application: {e}")
+            raise
 
-    asyncio.run(setup_webhook())
+    async def run_app():
+        try:
+            # Run initialization first
+            await init_app()
+            
+            # Configure and start Hypercorn
+            port = int(os.environ.get("PORT", 8080))
+            logger.info(f"Starting Hypercorn server on port {port}")
+            
+            config = Config()
+            config.bind = [f"0.0.0.0:{port}"]
+            config.accesslog = "-"  # Log to stdout
+            config.errorlog = "-"   # Log errors to stdout
+            config.worker_class = "asyncio"
+            config.debug = True if os.getenv("DEBUG") else False
+            config.use_reloader = False  # Disable reloader to prevent double initialization
+            
+            await serve(app, config)
+        except Exception as e:
+            logger.error(f"Failed to run application: {e}")
+            raise
 
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    # Run everything in the main event loop
+    asyncio.run(run_app())
