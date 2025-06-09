@@ -14,13 +14,14 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+OWNER_CHAT_ID = int(os.getenv("OWNER_CHAT_ID"))
 
 # Remove trailing slash from WEBHOOK_URL if present
 if WEBHOOK_URL and WEBHOOK_URL.endswith('/'):
     WEBHOOK_URL = WEBHOOK_URL.rstrip('/')
 
 # Проверка
-if not all([BOT_TOKEN, WEBHOOK_SECRET, WEBHOOK_URL]):
+if not all([BOT_TOKEN, WEBHOOK_SECRET, WEBHOOK_URL, OWNER_CHAT_ID]):
     raise RuntimeError("Переменные окружения не заданы корректно!")
 
 # Логгирование
@@ -46,7 +47,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("\U0001F6D2 Заказать кальян", callback_data="order_hookah")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        "Привет \U0001F44B! Я помогу тебе заказать кальян с доставкой по Минску.\nНажми кнопку ниже, чтобы начать \U0001F447",
+        "Привет! Я помогу тебе заказать кальян с доставкой по Минску.\nНажми кнопку ниже, чтобы начать \U0001F447",
         reply_markup=reply_markup
     )
 
@@ -56,7 +57,7 @@ async def handle_button_click(update: Update, context: ContextTypes.DEFAULT_TYPE
     if query.data == "order_hookah":
         user_id = query.from_user.id
         await query.message.reply_text(
-            "Выберите нужную услугу:\n1. Аренда одного кальяна на сутки – 30 BYN\n(в комплект входит: кальян, одна лёгкая забивка, калауд, щипцы, плитка для розжига угля, мундштуки\n2. Дополнительные сутки аренды – 15 BYN\n3. Дополнительная забивка табака (+уголь) – 12 BYN\n\n * Доставка оплачивается отдельно: привезти и забрать кальян – 20 BYN\n * Доставка за МКАД считается стоимость доставки + 0.5BYN/км от МКАД до точки доставки\n\nНапишите количество кальянов и дней аренды. Укажи дополнительную информацию по забивкам и доставке за МКАД, если требуется"
+            "Выберите нужную услугу:\n1. Аренда одного кальяна на сутки – 30 BYN\n(в комплект входит: кальян, одна лёгкая забивка, калауд, щипцы, плитка для розжига угля, мундштуки)\n2. Дополнительные сутки аренды – 15 BYN\n3. Дополнительная забивка табака (+уголь) – 12 BYN\n\n * Доставка оплачивается отдельно: привезти и забрать кальян – 20 BYN\n * При доставке за МКАД считается стоимость доставки + 0.5BYN/км от МКАД до точки доставки\n\nНапишите количество кальянов и дней аренды. Укажи дополнительную информацию по забивкам и доставке за МКАД, если требуется"
         )
         user_orders[user_id] = {"step": "choosing_hookah"}
 
@@ -65,7 +66,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
     if text == "\U0001F6D2 Заказать кальян":
-        await update.message.reply_text("Выберите нужную услугу:\n1. Аренда одного кальяна на сутки – 30 BYN\n(в комплект входит: кальян, одна лёгкая забивка, калауд, щипцы, плитка для розжига угля, мундштуки\n2. Дополнительные сутки аренды – 15 BYN\n3. Дополнительная забивка табака (+уголь) – 12 BYN\n\n * Доставка оплачивается отдельно: привезти и забрать кальян – 20 BYN\n * Доставка за МКАД считается стоимость доставки + 0.5BYN/км от МКАД до точки доставки\n\nНапишите количество кальянов и дней аренды. Укажи дополнительную информацию по забивкам и доставке за МКАД, если требуется")
+        await update.message.reply_text("Выберите нужную услугу:\n1. Аренда одного кальяна на сутки – 30 BYN\n(в комплект входит: кальян, одна лёгкая забивка, калауд, щипцы, плитка для розжига угля, мундштуки)\n2. Дополнительные сутки аренды – 15 BYN\n3. Дополнительная забивка табака (+уголь) – 12 BYN\n\n * Доставка оплачивается отдельно: привезти и забрать кальян – 20 BYN\n * При доставке за МКАД считается стоимость доставки + 0.5BYN/км от МКАД до точки доставки\n\nНапишите количество кальянов и дней аренды. Укажи дополнительную информацию по забивкам и доставке за МКАД, если требуется")
         user_orders[user_id] = {"step": "choosing_hookah"}
         return
 
@@ -98,6 +99,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Спасибо! Мы свяжемся с тобой в ближайшее время \U0001F64C"
         )
         await update.message.reply_text(summary)
+
+        # Уведомление о новом заказе
+        owner_notification = (
+            f"Новый заказ на доставку от @{update.effective_user.username or update.effective_user.first_name}:\n"
+            f"Кальян: {order['hooakh']}\n"
+            f"Адрес: {order['address']}\n"
+            f"Время: {order['time']}\n"
+            f"Телефон: {order['phone']}"
+        )
+        await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=owner_notification)
+
         user_orders[user_id]["step"] = "done"
 
     else:
