@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
 
-from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters, CallbackQueryHandler
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -43,12 +43,22 @@ user_orders = {}
 # === Хендлеры ===
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[KeyboardButton("\U0001F6D2 Заказать кальян")]]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    keyboard = [[InlineKeyboardButton("\U0001F6D2 Заказать кальян", callback_data="order_hookah")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
         "Привет \U0001F44B! Я помогу тебе заказать кальян с доставкой по Минску.\nНажми кнопку ниже, чтобы начать \U0001F447",
         reply_markup=reply_markup
     )
+
+async def handle_button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()  # подтверждение Telegram
+    if query.data == "order_hookah":
+        user_id = query.from_user.id
+        await query.message.reply_text(
+            "Выберите кальян из списка:\n1. DarkSide Strong \U0001F347 – 40 BYN\n2. MustHave Citrus \U0001F34B – 35 BYN\n\nНапиши номер или название."
+        )
+        user_orders[user_id] = {"step": "choosing_hookah"}
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
@@ -97,6 +107,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Нажми \U0001F6D2 Заказать кальян, чтобы начать новый заказ.")
 
 # Регистрация хендлеров
+telegram_app.add_handler(CallbackQueryHandler(handle_button_click))
 telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
