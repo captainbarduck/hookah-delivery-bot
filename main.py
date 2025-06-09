@@ -44,6 +44,8 @@ user_orders = {}
 # === Хендлеры ===
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print(f"chat_id: {update.effective_chat.id}")
+
     keyboard = [[InlineKeyboardButton("\U0001F6D2 Заказать кальян", callback_data="order_hookah")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
