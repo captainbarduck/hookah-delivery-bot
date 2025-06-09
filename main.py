@@ -110,7 +110,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Время: {order['time']}\n"
             f"Телефон: {order['phone']}"
         )
-        await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=owner_notification)
+        try:
+            await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=owner_notification)
+        except Exception as e:
+            logger.error(f"Не удалось отправить сообщение владельцу: {e}")
 
         user_orders[user_id]["step"] = "done"
 
