@@ -1,6 +1,8 @@
 import asyncio
 import os
 import logging
+import pytz
+from datetime import datetime
 from quart import Quart, request, abort
 from dotenv import load_dotenv
 from hypercorn.config import Config
@@ -27,6 +29,10 @@ if not all([BOT_TOKEN, WEBHOOK_SECRET, WEBHOOK_URL, OWNER_CHAT_ID]):
 # Логгирование
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Определение часового пояса
+MINSK_TZ = pytz.timezone("Europe/Minsk")
+today_minsk = datetime.now(MINSK_TZ).date()
 
 # Quart-приложение для асинхронной поддержки
 app = Quart(__name__)
@@ -66,6 +72,15 @@ async def handle_button_click(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     user_id = update.effective_user.id
+    today_minsk = datetime.now(MINSK_TZ).date()
+    
+    if user_id in user_orders:
+        last_order_date = user_orders[user_id].get("date")
+        if last_order_date == today_minsk:
+            await update.message.reply_text(
+                "Сегодня вы уже оставляли заказ. Лимит заказов в сутки: 1"
+            )
+            return
 
     if text == "\U0001F6D2 Заказать кальян":
         await update.message.reply_text("Выберите нужную услугу:\n1. Аренда одного кальяна на сутки – 30 BYN\n(в комплект входит: кальян, одна лёгкая забивка, калауд, щипцы, плитка для розжига угля, мундштуки)\n2. Дополнительные сутки аренды – 15 BYN\n3. Дополнительная забивка табака (+уголь) – 12 BYN\n\n * Доставка оплачивается отдельно: привезти и забрать кальян – 20 BYN\n * При доставке за МКАД считается стоимость доставки + 0.5BYN/км от МКАД до точки доставки\n\nНапишите количество кальянов и дней аренды. Укажи дополнительную информацию по забивкам и доставке за МКАД, если требуется")
@@ -91,6 +106,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif state == "phone":
         user_orders[user_id]["phone"] = text
+        user_orders[user_id]["date"] = today_minsk
         order = user_orders[user_id]
         summary = (
             f"\u2705 Твой заказ:\n"

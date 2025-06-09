@@ -4,3 +4,4 @@ quart==0.18.4
 requests==2.32.3
 python-dotenv==1.0.0
 requests
+pytz
