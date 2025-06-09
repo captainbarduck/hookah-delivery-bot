@@ -71,6 +71,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def handle_button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    today_minsk = datetime.now(MINSK_TZ).date()
+
+    last_order_date = user_orders.get(user_id, {}).get("date")
+    if last_order_date == today_minsk:
+        await update.message.reply_text(
+            "Сегодня вы уже оставляли заказ. Лимит заказов в сутки: 1"
+        )
+        return
     query = update.callback_query
     await query.answer()  # подтверждение Telegram
     if query.data == "order_hookah":
