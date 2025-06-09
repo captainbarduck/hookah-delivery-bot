@@ -71,11 +71,12 @@ async def handle_button_click(update: Update, context: ContextTypes.DEFAULT_TYPE
         user_orders[user_id] = {"step": "choosing_hookah"}
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f"DEBUG: user_id={user_id}, last_order_date={user_orders.get(user_id, {}).get('date')}, today={today_minsk}")
     text = update.message.text
     user_id = update.effective_user.id
     today_minsk = datetime.now(MINSK_TZ).date()
     
+    print(f"DEBUG: user_id={user_id}, last_order_date={user_orders.get(user_id, {}).get('date')}, today={today_minsk}")
+
     if user_id in user_orders:
         last_order_date = user_orders[user_id].get("date")
         if last_order_date == today_minsk:
