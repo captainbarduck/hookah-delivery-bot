@@ -56,7 +56,7 @@ async def handle_button_click(update: Update, context: ContextTypes.DEFAULT_TYPE
     if query.data == "order_hookah":
         user_id = query.from_user.id
         await query.message.reply_text(
-            "Выберите кальян из списка:\n1. DarkSide Strong \U0001F347 – 40 BYN\n2. MustHave Citrus \U0001F34B – 35 BYN\n\nНапиши номер или название."
+            "Выберите нужную услугу:\n1. Аренда одного кальяна на сутки – 30 BYN\n2. Дополнительные сутки аренды – 15 BYN\n\nНапишите количество кальянов и дней аренды."
         )
         user_orders[user_id] = {"step": "choosing_hookah"}
 
@@ -65,7 +65,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
     if text == "\U0001F6D2 Заказать кальян":
-        await update.message.reply_text("Выберите кальян из списка:\n1. Аренда одного кальяна на сутки – 30 BYN\n2. Дополнительные сутки аренды – 15 BYN\n\nНапишите количество кальянов и дней аренды.")
+        await update.message.reply_text("Выберите нужную услугу:\n1. Аренда одного кальяна на сутки – 30 BYN\n2. Дополнительные сутки аренды – 15 BYN\n\nНапишите количество кальянов и дней аренды.")
         user_orders[user_id] = {"step": "choosing_hookah"}
         return
 
