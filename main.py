@@ -105,7 +105,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Уведомление о новом заказе
         owner_notification = (
             f"Новый заказ на доставку от @{update.effective_user.username or update.effective_user.first_name}:\n"
-            f"Кальян: {order['hooakh']}\n"
+            f"Кальян: {order['hookah']}\n"
             f"Адрес: {order['address']}\n"
             f"Время: {order['time']}\n"
             f"Телефон: {order['phone']}"
