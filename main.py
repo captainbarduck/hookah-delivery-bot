@@ -1,8 +1,6 @@
 import asyncio
 import os
 import logging
-import pytz
-from datetime import datetime
 from quart import Quart, request, abort
 from dotenv import load_dotenv
 from hypercorn.config import Config
@@ -10,6 +8,9 @@ from hypercorn.asyncio import serve
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters, CallbackQueryHandler
+
+from datetime import datetime
+import pytz
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -70,6 +71,7 @@ async def handle_button_click(update: Update, context: ContextTypes.DEFAULT_TYPE
         user_orders[user_id] = {"step": "choosing_hookah"}
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print(f"DEBUG: user_id={user_id}, last_order_date={user_orders.get(user_id, {}).get('date')}, today={today_minsk}")
     text = update.message.text
     user_id = update.effective_user.id
     today_minsk = datetime.now(MINSK_TZ).date()
@@ -106,7 +108,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif state == "phone":
         user_orders[user_id]["phone"] = text
-        user_orders[user_id]["date"] = today_minsk
         order = user_orders[user_id]
         summary = (
             f"\u2705 Твой заказ:\n"
@@ -131,6 +132,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             logger.error(f"Не удалось отправить сообщение владельцу: {e}")
 
+        user_orders[user_id]["date"] = today_minsk
         user_orders[user_id]["step"] = "done"
 
     else:
