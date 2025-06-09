@@ -51,6 +51,16 @@ user_orders = {}
 # === Хендлеры ===
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    today_minsk = datetime.now(MINSK_TZ).date()
+
+    last_order_date = user_orders.get(user_id, {}).get("date")
+    if last_order_date == today_minsk:
+        await update.message.reply_text(
+            "Сегодня вы уже оставляли заказ. Лимит заказов в сутки: 1"
+        )
+        return
+
     print(f"chat_id: {update.effective_chat.id}")
 
     keyboard = [[InlineKeyboardButton("\U0001F6D2 Заказать кальян", callback_data="order_hookah")]]
