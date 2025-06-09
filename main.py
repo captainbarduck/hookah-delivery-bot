@@ -56,7 +56,7 @@ async def handle_button_click(update: Update, context: ContextTypes.DEFAULT_TYPE
     if query.data == "order_hookah":
         user_id = query.from_user.id
         await query.message.reply_text(
-            "Выберите нужную услугу:\n1. Аренда одного кальяна на сутки – 30 BYN\n2. Дополнительные сутки аренды – 15 BYN\n\nНапишите количество кальянов и дней аренды."
+            "Выберите нужную услугу:\n1. Аренда одного кальяна на сутки – 30 BYN\n2. Дополнительные сутки аренды – 15 BYN\n3. Дополнительная забивка табака (+уголь) - 12 BYN\n\n * Доставка оплачивается отдельно: привезти и забрать кальян суммарно 20 BYN\n * Доставка за МКАД считается 0.5BYN от МКАД до точки доставки\n\nНапишите количество кальянов и дней аренды. Укажи дополнительную информацию по забивкам и доставке за МКАД, если требуется"
         )
         user_orders[user_id] = {"step": "choosing_hookah"}
 
@@ -65,7 +65,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
     if text == "\U0001F6D2 Заказать кальян":
-        await update.message.reply_text("Выберите нужную услугу:\n1. Аренда одного кальяна на сутки – 30 BYN\n2. Дополнительные сутки аренды – 15 BYN\n\nНапишите количество кальянов и дней аренды.")
+        await update.message.reply_text("ВВыберите нужную услугу:\n1. Аренда одного кальяна на сутки – 30 BYN\n2. Дополнительные сутки аренды – 15 BYN\n3. Дополнительная забивка табака (+уголь) - 12 BYN\n\n * Доставка оплачивается отдельно: привезти и забрать кальян суммарно 20 BYN\n * Доставка за МКАД считается 0.5BYN от МКАД до точки доставки\n\nНапишите количество кальянов и дней аренды. Укажи дополнительную информацию по забивкам и доставке за МКАД, если требуется")
         user_orders[user_id] = {"step": "choosing_hookah"}
         return
 
@@ -91,7 +91,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         order = user_orders[user_id]
         summary = (
             f"\u2705 Твой заказ:\n"
-            f"• Кальян: {order['hookah']}\n"
+            f"• Услуга: {order['hookah']}\n"
             f"• Адрес: {order['address']}\n"
             f"• Время: {order['time']}\n"
             f"• Телефон: {order['phone']}\n\n"
