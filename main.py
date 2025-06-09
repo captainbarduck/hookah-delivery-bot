@@ -65,7 +65,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
     if text == "\U0001F6D2 Заказать кальян":
-        await update.message.reply_text("Выберите кальян из списка:\n1. DarkSide Strong \U0001F347 – 40 BYN\n2. MustHave Citrus \U0001F34B – 35 BYN\n\nНапиши номер или название.")
+        await update.message.reply_text("Выберите кальян из списка:\n1. Аренда одного кальяна на сутки – 30 BYN\n2. Дополнительные сутки аренды – 15 BYN\n\nНапишите количество кальянов и дней аренды.")
         user_orders[user_id] = {"step": "choosing_hookah"}
         return
 
@@ -74,12 +74,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "choosing_hookah":
         user_orders[user_id]["hookah"] = text
         user_orders[user_id]["step"] = "address"
-        await update.message.reply_text("Укажи адрес доставки (только по Минску):")
+        await update.message.reply_text("Укажи адрес доставки (Минск, либо за МКАД в пределах 50км):")
 
     elif state == "address":
-        if "минск" not in text.lower():
-            await update.message.reply_text("Мы доставляем только по Минску. Пожалуйста, укажи минский адрес.")
-            return
         user_orders[user_id]["address"] = text
         user_orders[user_id]["step"] = "time"
         await update.message.reply_text("Укажи удобное время доставки (например, 20:00):")
