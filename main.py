@@ -54,6 +54,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     today_minsk = datetime.now(MINSK_TZ).date()
 
+    # проверка лимитов
     last_order_date = user_orders.get(user_id, {}).get("date")
     if last_order_date == today_minsk:
         await update.message.reply_text(
@@ -71,17 +72,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def handle_button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
     user_id = update.effective_user.id
     today_minsk = datetime.now(MINSK_TZ).date()
 
+    # проверка лимитов
     last_order_date = user_orders.get(user_id, {}).get("date")
     if last_order_date == today_minsk:
         await update.message.reply_text(
             "Сегодня вы уже оставляли заказ. Лимит заказов в сутки: 1"
         )
         return
-    query = update.callback_query
-    await query.answer()  # подтверждение Telegram
+
     if query.data == "order_hookah":
         user_id = query.from_user.id
         await query.message.reply_text(
@@ -95,7 +98,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today_minsk = datetime.now(MINSK_TZ).date()
     
     print(f"DEBUG: user_id={user_id}, last_order_date={user_orders.get(user_id, {}).get('date')}, today={today_minsk}")
-
+   
+    # проверка лимитов
     if user_id in user_orders:
         last_order_date = user_orders[user_id].get("date")
         if last_order_date == today_minsk:
