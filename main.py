@@ -158,7 +158,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_id=user_id,
             hookah=order['hookah'],
             address=order['address'],
-            time=order['time'],
+            delivery_time=order['time'],
             phone=order['phone'],
             order_date=today_minsk
         )
