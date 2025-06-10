@@ -5,6 +5,7 @@ from quart import Quart, request, abort
 from dotenv import load_dotenv
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
+from database import init_db, is_limit_reached, save_order
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters, CallbackQueryHandler
@@ -55,8 +56,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today_minsk = datetime.now(MINSK_TZ).date()
 
     # проверка лимитов
-    last_order_date = user_orders.get(user_id, {}).get("date")
-    if last_order_date == today_minsk:
+    if await is_limit_reached(user_id, today_minsk):
         await update.message.reply_text(
             "Сегодня вы уже оставляли заказ. Лимит заказов в сутки: 1"
         )
@@ -78,8 +78,7 @@ async def handle_button_click(update: Update, context: ContextTypes.DEFAULT_TYPE
     today_minsk = datetime.now(MINSK_TZ).date()
 
     # проверка лимитов
-    last_order_date = user_orders.get(user_id, {}).get("date")
-    if last_order_date == today_minsk:
+    if await is_limit_reached(user_id, today_minsk):
         await query.edit_message_text(
             "Сегодня вы уже оставляли заказ. Лимит заказов в сутки: 1"
         )
@@ -101,8 +100,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
    
     # проверка лимитов
     if user_id in user_orders:
-        last_order_date = user_orders[user_id].get("date")
-        if last_order_date == today_minsk:
+        if await is_limit_reached(user_id, today_minsk):
             await update.message.reply_text(
                 "Сегодня вы уже оставляли заказ. Лимит заказов в сутки: 1"
             )
@@ -155,6 +153,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=owner_notification)
         except Exception as e:
             logger.error(f"Не удалось отправить сообщение владельцу: {e}")
+
+        await save_order(
+            user_id=user_id,
+            hookah=order['hookah'],
+            address=order['address'],
+            time=order['time'],
+            phone=order['phone'],
+            order_date=today_minsk
+        )
 
         user_orders[user_id]["date"] = today_minsk
         user_orders[user_id]["step"] = "done"
@@ -220,6 +227,7 @@ async def health():
 @app.before_serving
 async def startup():
     logger.info("Application startup...")
+    await init_db()
 
 @app.after_serving
 async def shutdown():
