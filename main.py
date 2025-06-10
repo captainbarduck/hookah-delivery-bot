@@ -155,7 +155,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"Не удалось отправить сообщение владельцу: {e}")
 
         await save_order(
-            user_id=user_id,
+            user_id=update.effective_user.id,
+            username=update.effective_user.username or "no_username",
             hookah=order['hookah'],
             address=order['address'],
             delivery_time=order['time'],
