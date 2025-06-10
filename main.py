@@ -248,6 +248,15 @@ async def health():
 
 async def main():
     await init_db()
+
+    webhook_path = f"{WEBHOOK_URL}/{WEBHOOK_SECRET}"
+    await telegram_app.bot.set_webhook(
+    url=webhook_path,
+    secret_token=WEBHOOK_SECRET,
+    allowed_updates=["message", "callback_query"]
+    )
+    logger.info(f"Webhook set to: {webhook_path}")
+
     config = Config()
     config.bind = ["0.0.0.0:8080"]
     logger.info("Starting Quart server with Hypercorn...")
