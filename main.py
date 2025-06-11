@@ -259,7 +259,8 @@ async def main():
     logger.info(f"Webhook set to: {webhook_path}")
 
     config = Config()
-    config.bind = ["0.0.0.0:8080"]
+    port = int(os.getenv("PORT", 8080))  # по умолчанию 8080, если PORT нет
+    config.bind = [f"0.0.0.0:{port}"]
     logger.info("Starting Quart server with Hypercorn...")
     await serve(app, config)
 
