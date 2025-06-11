@@ -1,6 +1,7 @@
 import asyncio
 import os
 import sys
+import re
 from datetime import datetime
 
 import pytz
@@ -131,18 +132,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.debug(f"User {user_id} выбрал услугу: {text}")
 
     elif state == "address":
+        if not text.strip():
+            await update.message.reply_text("Адрес не должен быть пустым. Попробуй снова:")
+            return
         user_orders[user_id]["address"] = text
         user_orders[user_id]["step"] = "time"
         await update.message.reply_text("Укажи удобное время доставки (например, 20:00):")
         logger.debug(f"User {user_id} указал адрес: {text}")
 
     elif state == "time":
+        if not re.match(r"^(?:[01]\d|2[0-3]):[0-5]\d$", text.strip()):
+            await update.message.reply_text("Некорректный формат времени. Используй HH:MM (например, 20:30):")
+            return
         user_orders[user_id]["time"] = text
         user_orders[user_id]["step"] = "phone"
         await update.message.reply_text("Оставь, пожалуйста, свой номер телефона \U0001F4DE:")
         logger.debug(f"User {user_id} указал время: {text}")
 
     elif state == "phone":
+        if not re.match(r"^\+375(25|29|33|44)\d{7}$", text.strip()):
+            await update.message.reply_text("Некорректный номер. Используй формат +375XXYYYYYYY:")
+            return
         user_orders[user_id]["phone"] = text
         order = user_orders[user_id]
         summary = (
