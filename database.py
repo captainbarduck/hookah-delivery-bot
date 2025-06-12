@@ -45,6 +45,19 @@ async def save_order(user_id: int, username: str, hookah: str, address: str, del
     async with db_pool.acquire() as conn:
         await conn.execute(query, user_id, username, hookah, address, delivery_time, phone, order_date)
 
+async def get_orders_by_date(query_date: date):
+    conn = await asyncpg.connect(dsn=os.getenv("DATABASE_URL"))
+    try:
+        rows = await conn.fetch("""
+            SELECT username, hookah, address, delivery_time, phone 
+            FROM orders 
+            WHERE order_date = $1
+            ORDER BY delivery_time
+        """, query_date)
+        return rows
+    finally:
+        await conn.close()
+
 try:
     ...
 except Exception as e:

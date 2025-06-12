@@ -14,7 +14,7 @@ from hypercorn.config import Config
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters, CallbackQueryHandler
 
-from database import init_db, is_limit_reached, save_order
+from database import init_db, is_limit_reached, save_order, get_orders_by_date
 
 # =============================
 # Логирование setup
@@ -64,6 +64,33 @@ user_orders = {}
 
 # =============================
 # Хендлеры Telegram
+
+async def orders(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id != OWNER_CHAT_ID:
+        await update.message.reply_text("У вас нет доступа к этой команде.")
+        logger.warning(f"User {user_id} попытался получить доступ к /orders")
+        return
+
+    today_minsk = datetime.now(MINSK_TZ).date()
+    orders = await get_orders_by_date(today_minsk)
+
+    if not orders:
+        await update.message.reply_text("На сегодня заказов пока нет.")
+        return
+
+    message = f"\U0001F4C5 Заказы на {today_minsk.strftime('%d.%m.%Y')}:\n\n"
+    for i, order in enumerate(orders, start=1):
+        message += (
+            f"{i}. @{order['username']}\n"
+            f"• Услуга: {order['hookah']}\n"
+            f"• Адрес: {order['address']}\n"
+            f"• Время: {order['delivery_time']}\n"
+            f"• Тел: {order['phone']}\n\n"
+        )
+
+    await update.message.reply_text(message)
+    logger.info(f"Владелец запросил список заказов на {today_minsk}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -202,7 +229,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 telegram_app.add_handler(CallbackQueryHandler(handle_button_click))
 telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
+telegram_app.add_handler(CommandHandler("orders", orders))
 # =============================
 # Webhook endpoint с мониторингом и логированием
 
