@@ -250,6 +250,7 @@ async def main():
     await init_db()
 
     webhook_path = f"{WEBHOOK_URL}/{WEBHOOK_SECRET}"
+    await telegram_app.initialize()
     await telegram_app.bot.set_webhook(
     url=webhook_path,
     secret_token=WEBHOOK_SECRET,
